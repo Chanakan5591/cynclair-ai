@@ -1,6 +1,6 @@
 # 3rd party integrations
 from .intelsource import VirusTotal, AbuseIPDB
-from ..feature_flags import ABUSEIPDB_SOURCE, VIRUSTOTAL_SOURCE
+from .feature_flags import ABUSEIPDB_SOURCE, VIRUSTOTAL_SOURCE
 
 class IPEnrich:
     def __init__(self, ip_set: str):

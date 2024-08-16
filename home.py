@@ -12,7 +12,7 @@ import os
 # LLMs
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import create_retriever_tool, tool
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
 
 ## LLMs RAGs
 from langchain_chroma import Chroma
@@ -22,7 +22,11 @@ from langchain_community.embeddings.sentence_transformer import (
 from langchain_community.document_loaders import JSONLoader
 
 # Web UI
-import streamlit as st
+import mesop as me
+import mesop.labs as mel
+
+# Dataclasses
+from dataclasses import field
 
 # TI Lookup
 from cyntelligence import IPEnrich
@@ -71,14 +75,11 @@ Software stack used are as follow:
 You will not mention those stacks unless mentioned by the user, these are for your own information. You will use markdown to format. You will always respond in Thai.
 """
 
-if 'tool_messages' not in st.session_state:
-    st.session_state['tool_messages'] = [SystemMessage(tool_system)] # All messages between user and tool-calling LLMs in the session
+@me.stateclass
+class State:
+    tool_messages: list[dict] = field(default_factory=lambda: [{"role": "system", "content": tool_system}])
+    chat_messages: list[dict] = field(default_factory=lambda: [{"role": "system", "content": chat_system}])
 
-if 'chat_messages' not in st.session_state:
-    st.session_state['chat_messages'] = [SystemMessage(chat_system)] # All messages between use and chat LLMs including ToolMessage
-
-
-@st.cache_resource
 def get_chroma():
     embedding_function = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
     return Chroma(collection_name="typhoon-tools", embedding_function=embedding_function)
@@ -170,8 +171,6 @@ def get_info_vt_hash(file_hash: str) -> str:
 
     return "Context: {}\n\nProvide all the information to the user when possible in a nicely structured table format in markdown, only provide 5 engines in the response unless asked otherwise.".format(str(final_info))
 
-
-@st.cache_resource
 def init():
     load_dotenv() # Load API Key from env (OpenTyphoon API Key, Not actually OpenAI)
 
@@ -193,50 +192,79 @@ def init():
 
 tool_llm, chat_llm = init()
 
-for chat_message in st.session_state['chat_messages']:
-    if type(chat_message) == HumanMessage:
-        with st.chat_message("human"):
-            st.markdown(chat_message.content)
+### UI Setup
+def on_load(e: me.LoadEvent):
+    me.set_theme_mode('system')
 
-    if type(chat_message) == AIMessage:
-        with st.chat_message("assistant"):
-            st.markdown(chat_message.content)
+@me.page(path='/', title='Chat With SOC', on_load=on_load)
+def page():
+    mel.chat(transform, title="Chat With SOC", bot_user="Automated Investigator")
 
-# Human query
-if query := st.chat_input("What do you need?"):
-    print(st.session_state['tool_messages'])
-
-    print('\n\n')
-
-    print(st.session_state['chat_messages'])
-    with st.chat_message("user"):
-        st.markdown(query)
-
-    # append human query to tool messages for the tool calling
-    st.session_state['tool_messages'].append(HumanMessage(query))
-    # append human query to chat messages as a context to be respond
-    st.session_state['chat_messages'].append(HumanMessage(query))
+def transform(input: str, history: list[mel.ChatMessage]):
+    state = me.state(State)
+    # update the state with the new input
+    state.tool_messages.append({"role": "user", "content": input})
+    state.chat_messages.append({"role": "user", "content": input})
 
     # Start by calling tool-calling LLMs for gathering informations or doing actions
-    ai_msg = tool_llm.invoke(st.session_state['tool_messages'])
-    st.session_state['tool_messages'].append(ai_msg)
-    
+    ai_msg = tool_llm.invoke(state.tool_messages)
+    state.tool_messages.append(ai_msg.dict())
     print("Tool LLM Response:", ai_msg)
 
     for tool_call in ai_msg.tool_calls:
         selected_tool = {"execute_aql": execute_aql, "get_info_vt_hash": get_info_vt_hash, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip_ip": get_info_tip_ip}[tool_call["name"].lower()]
         tool_output = selected_tool.invoke(tool_call["args"])
-        st.session_state['chat_messages'].append(SystemMessage(tool_output, tool_call_id=tool_call['id'])) # Add Tool Responses to chat messages so that chat LLMs have the responses
+        state.chat_messages.append({"role": "system", "content": tool_output}) # Add Tool Responses to chat messages so that chat LLMs have the responses state
 
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
+    for chunk in chat_llm.stream(state.chat_messages):
+        yield chunk.content
 
-        for chunk in chat_llm.stream(st.session_state['chat_messages']):
-            full_response += chunk.content
-            message_placeholder.markdown(full_response + "▌")
+    state.chat_messages.append({"role": "assistant", "content": chunk.content})
 
-        message_placeholder.markdown(full_response)
+# for chat_message in st.session_state['chat_messages']:
+#     if type(chat_message) == HumanMessage:
+#         with st.chat_message("human"):
+#             st.markdown(chat_message.content)
 
-    st.session_state['chat_messages'].append(AIMessage(full_response))
-    ### END INFERENCE
+#     if type(chat_message) == AIMessage:
+#         with st.chat_message("assistant"):
+#             st.markdown(chat_message.content)
+
+# # Human query
+# if query := st.chat_input("What do you need?"):
+#     print(st.session_state['tool_messages'])
+
+#     print('\n\n')
+
+#     print(st.session_state['chat_messages'])
+#     with st.chat_message("user"):
+#         st.markdown(query)
+
+#     # append human query to tool messages for the tool calling
+#     st.session_state['tool_messages'].append(HumanMessage(query))
+#     # append human query to chat messages as a context to be respond
+#     st.session_state['chat_messages'].append(HumanMessage(query))
+
+#     # Start by calling tool-calling LLMs for gathering informations or doing actions
+#     ai_msg = tool_llm.invoke(st.session_state['tool_messages'])
+#     st.session_state['tool_messages'].append(ai_msg)
+    
+#     print("Tool LLM Response:", ai_msg)
+
+#     for tool_call in ai_msg.tool_calls:
+#         selected_tool = {"execute_aql": execute_aql, "get_info_vt_hash": get_info_vt_hash, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip_ip": get_info_tip_ip}[tool_call["name"].lower()]
+#         tool_output = selected_tool.invoke(tool_call["args"])
+#         st.session_state['chat_messages'].append(SystemMessage(tool_output, tool_call_id=tool_call['id'])) # Add Tool Responses to chat messages so that chat LLMs have the responses
+
+#     with st.chat_message("assistant"):
+#         message_placeholder = st.empty()
+#         full_response = ""
+
+#         for chunk in chat_llm.stream(st.session_state['chat_messages']):
+#             full_response += chunk.content
+#             message_placeholder.markdown(full_response + "▌")
+
+#         message_placeholder.markdown(full_response)
+
+#     st.session_state['chat_messages'].append(AIMessage(full_response))
+#     ### END INFERENCE
