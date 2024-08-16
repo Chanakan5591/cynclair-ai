@@ -1,23 +1,25 @@
 # 3rd party integrations
-from .intelsource import VirusTotal
-
-# to access env
-import os
-
-# Caching API calls
-import functools
+from .intelsource import VirusTotal, AbuseIPDB
+from ..feature_flags import ABUSEIPDB_SOURCE, VIRUSTOTAL_SOURCE
 
 class IPEnrich:
-    def __init__(self, ip: str):
-        Vt = VirusTotal()
-
-        self.ip = ip
-        self.vt = Vt.get_vt()
-
-    @functools.lru_cache(maxsize=128)
-    def _get_vt_cached(self, ip):
-        info = self.vt.get_object(f'/ip_addresses/{ip}')
-        return info
+    def __init__(self, ip_set: str):
+        self.vt = VirusTotal(ip_set)
+        self.abuseipdb = AbuseIPDB(ip_set)
 
     def get_vt(self):
-        return self._get_vt_cached(self.ip)
+        if VIRUSTOTAL_SOURCE:
+            return self.vt.get_info()
+    
+        return None
+
+    def get_abuseipdb(self):
+        if ABUSEIPDB_SOURCE:
+            return self.abuseipdb.get_info()
+
+        return None
+
+    # All in this case only applied to enabled TIP
+    def get_all_info(self):
+        full_info = [{"VirusTotal": self.get_vt()}, {"AbuseIPDB": self.get_abuseipdb()}]
+        return full_info

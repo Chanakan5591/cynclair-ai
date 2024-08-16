@@ -129,17 +129,18 @@ def execute_aql(aql: str) -> str:
     return '["10.23.1.3", "102.10.55.12", "22.104.100.2"]' # return placeholder for now
 
 @tool
-def get_info_vt_ip(ip_address: str) -> str:
-    """Interact with VirusTotal (aka VT) for getting information related to IP addresses
+def get_info_tip_ip(ip_addresses: list[str]) -> str:
+    """Interact with Threat Intelligence Platforms for getting information related to IP addresses
 
     Args:
-        ip_address: The ip address to be send to virus total
+        ip_addresses: A list of ip addresses to be send to Threat Intelligence Platform
     """
-    ip_enrich = IPEnrich(ip_address)
-    info = ip_enrich.get_vt()
-    print('\n\n')
-    print(info)
-    return ""
+    ip_enrich = IPEnrich(ip_addresses)
+    info = ip_enrich.get_all_info()
+    """ 
+       
+        return "Context: {}\n\nProvide all the information to the user when possible in a nicely structured table format in markdown, only provide 5 engines in the response unless asked otherwise.".format(str(final_info))
+    """
 
 @tool
 def get_info_vt_hash(file_hash: str) -> str:
@@ -167,7 +168,7 @@ def get_info_vt_hash(file_hash: str) -> str:
             'result': engine_info['result'],
         })
 
-        return "Context: {}\n\nProvide all the information to the user when possible in a nicely structured table format in markdown, only provide 5 engines in the response unless asked otherwise.".format(str(final_info))
+    return "Context: {}\n\nProvide all the information to the user when possible in a nicely structured table format in markdown, only provide 5 engines in the response unless asked otherwise.".format(str(final_info))
 
 
 @st.cache_resource
@@ -175,7 +176,7 @@ def init():
     load_dotenv() # Load API Key from env (OpenTyphoon API Key, Not actually OpenAI)
 
     ### BEGIN TOOL CALLING LLMs
-    tools = [execute_aql, get_info_vt_hash, direct_response, convert_timestamp_to_datetime_utc7, get_info_vt_ip]
+    tools = [execute_aql, get_info_vt_hash, direct_response, convert_timestamp_to_datetime_utc7, get_info_tip_ip]
 
     tool_llm = ChatOpenAI(model="typhoon-v1.5-instruct-fc", temperature=0, base_url="https://api.opentyphoon.ai/v1") # function calling LLMs specifically for interacting with tools
     llm_with_tools = tool_llm.bind_tools(tools)
@@ -223,7 +224,7 @@ if query := st.chat_input("What do you need?"):
     print("Tool LLM Response:", ai_msg)
 
     for tool_call in ai_msg.tool_calls:
-        selected_tool = {"execute_aql": execute_aql, "get_info_vt_hash": get_info_vt_hash, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_vt_ip": get_info_vt_ip}[tool_call["name"].lower()]
+        selected_tool = {"execute_aql": execute_aql, "get_info_vt_hash": get_info_vt_hash, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip_ip": get_info_tip_ip}[tool_call["name"].lower()]
         tool_output = selected_tool.invoke(tool_call["args"])
         st.session_state['chat_messages'].append(SystemMessage(tool_output, tool_call_id=tool_call['id'])) # Add Tool Responses to chat messages so that chat LLMs have the responses
 
