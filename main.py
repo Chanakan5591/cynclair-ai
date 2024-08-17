@@ -5,6 +5,12 @@ import datetime as dt
 # Parsing JSON
 import json
 
+# Regex
+import re
+
+# To write JSON output temporarily to file
+import tempfile
+
 # For loading API Keys from the env
 from dotenv import load_dotenv
 import os
@@ -20,6 +26,7 @@ from langchain_community.embeddings.sentence_transformer import (
     SentenceTransformerEmbeddings,
 )
 from langchain_community.document_loaders import JSONLoader
+from langchain_text_splitters import RecursiveJsonSplitter
 
 # Web UI
 import mesop as me
@@ -30,6 +37,9 @@ from dataclasses import field
 
 # TI Lookup
 from cyntelligence import IPEnrich
+
+# CACHING
+from functools import cache
 
 # NOTE: preferrably provide all useful tables and columns name within Ariel Database to allow for a more accurate query
 tool_system = """
@@ -62,7 +72,7 @@ Software stack used are as follow:
 - devicetype
 - qid (QRadar ID)
 
-If you think you dont need to call any tools, or there are already enough context, use the tool "direct_response" to send the information to another LLMs for analysis. When dealing with epoch timestamp, you must use `convert_timestamp_to_datetime_utc7` tool to convert the timestamp to human readable format of UTC+7
+If you think you dont need to call any tools, or there are already enough context, use the tool "direct_response" to send the information to another LLMs for analysis. When dealing with epoch timestamp, you must use `convert_timestamp_to_datetime_utc7` tool to convert the timestamp to human readable format of UTC+7. You can use the tool "retrieval_tool" to actually get the context from chroma retriever if you think you have already fetched the information. Provide an argument as the string of ip, hash, etc or natural language to the tool "retrieval_tool" to get the context from the database, include platform name in the query if you want to get the context for that platform. If there is a past request with tool response of "<ADDED_TO_RETRIEVER>", then you can use the tool "retrieval_tool" to get the context from the database directly.
 """
 
 chat_system = """
@@ -80,9 +90,22 @@ class State:
     tool_messages: list[dict] = field(default_factory=lambda: [{"role": "system", "content": tool_system}])
     chat_messages: list[dict] = field(default_factory=lambda: [{"role": "system", "content": chat_system}])
 
+@cache
 def get_chroma():
     embedding_function = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-    return Chroma(collection_name="typhoon-tools", embedding_function=embedding_function)
+    return Chroma(collection_name="investigation-context", embedding_function=embedding_function)
+
+@cache
+def pre_init():
+    db = get_chroma()
+    retriever = db.as_retriever()
+    retrieval_tool = create_retriever_tool(retriever, "investigation_context", "Context for the investigation that came from tools, use it to answer the user's question")
+
+    splitter = RecursiveJsonSplitter()
+    
+    return (db, retrieval_tool, splitter)
+
+db, retrieval_tool, splitter = pre_init()
 
 #@st.cache_resource
 #def get_info_vt_hash_request(file_hash: str) -> vt.Object:
@@ -138,10 +161,20 @@ def get_info_tip_ip(ip_addresses: list[str]) -> str:
     """
     ip_enrich = IPEnrich(ip_addresses)
     info = ip_enrich.get_all_info()
-    """ 
-       
-        return "Context: {}\n\nProvide all the information to the user when possible in a nicely structured table format in markdown, only provide 5 engines in the response unless asked otherwise.".format(str(final_info))
-    """
+    
+    with tempfile.NamedTemporaryFile(mode='w', delete=True) as f:
+        docs = splitter.split_json(json_data=info, convert_lists=True)
+        
+        # temp file save and load via jsonloader
+        f.write(json.dumps(docs))
+
+        loader = JSONLoader(f.name, jq_schema='.[]', text_content=False)
+        docs = loader.load()
+        db.add_documents(docs)
+
+        f.close()
+
+    return "<ADDED_TO_RETRIEVER>"
 
 @tool
 def get_info_vt_hash(file_hash: str) -> str:
@@ -171,11 +204,12 @@ def get_info_vt_hash(file_hash: str) -> str:
 
     return "Context: {}\n\nProvide all the information to the user when possible in a nicely structured table format in markdown, only provide 5 engines in the response unless asked otherwise.".format(str(final_info))
 
+
+tools = [retrieval_tool, execute_aql, get_info_vt_hash, direct_response, convert_timestamp_to_datetime_utc7, get_info_tip_ip]
+
 def init():
     load_dotenv() # Load API Key from env (OpenTyphoon API Key, Not actually OpenAI)
-
     ### BEGIN TOOL CALLING LLMs
-    tools = [execute_aql, get_info_vt_hash, direct_response, convert_timestamp_to_datetime_utc7, get_info_tip_ip]
 
     tool_llm = ChatOpenAI(model="typhoon-v1.5-instruct-fc", temperature=0, base_url="https://api.opentyphoon.ai/v1") # function calling LLMs specifically for interacting with tools
     llm_with_tools = tool_llm.bind_tools(tools)
@@ -192,6 +226,22 @@ def init():
 
 tool_llm, chat_llm = init()
 
+### Util function to deduplicate any context
+def deduplicate_system_role(messages):
+    seen_content = set()
+    result = []
+
+    for d in messages:
+        if d.get('role') == 'system':
+            content = d.get('content')
+            if content == '<ADDED_TO_RETRIEVER>':
+                continue
+            if content not in seen_content:
+                seen_content.add(content)
+                result.append(d)
+    
+    return result
+
 ### UI Setup
 def on_load(e: me.LoadEvent):
     me.set_theme_mode('system')
@@ -199,6 +249,34 @@ def on_load(e: me.LoadEvent):
 @me.page(path='/', title='Chat With SOC', on_load=on_load)
 def page():
     mel.chat(transform, title="Chat With SOC", bot_user="Automated Investigator")
+
+def process_tool_calls(tool_calls, state, ai_msg, tool_llm):
+    if not tool_calls:
+        return
+    
+    print("AI MSG:", ai_msg.content)
+    
+    tool_call = tool_calls[0]
+    selected_tool = {"retrieval_tool": retrieval_tool, "execute_aql": execute_aql, "get_info_vt_hash": get_info_vt_hash, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip_ip": get_info_tip_ip}[tool_call["name"].lower()]
+    tool_output = selected_tool.invoke(tool_call["args"])
+
+    state.tool_messages.append({"role": "tool", "content": tool_output, "tool_call_id": tool_call['id']})
+
+    print("OUT:", tool_output)
+
+    if "<ADDED_TO_RETRIEVER>" in tool_output:
+        state.tool_messages.append({"role": "user", "content": "Use the tool \"retrieval_tool\" to get the context from the database."})
+
+        # Invoke the tool LLMs again to get the context from the database
+        ai_msg = tool_llm.invoke(state.tool_messages)
+
+        state.tool_messages.append(ai_msg.dict())
+
+        # Recursive call to process remaining tool calls
+        process_tool_calls(ai_msg.tool_calls, state, ai_msg, tool_llm)
+    else:
+        state.chat_messages.append({"role": "system", "content": tool_output})  # Add Tool Responses to chat messages so that chat LLMs have the responses state
+        
 
 def transform(input: str, history: list[mel.ChatMessage]):
     state = me.state(State)
@@ -209,62 +287,15 @@ def transform(input: str, history: list[mel.ChatMessage]):
     # Start by calling tool-calling LLMs for gathering informations or doing actions
     ai_msg = tool_llm.invoke(state.tool_messages)
     state.tool_messages.append(ai_msg.dict())
+
     print("Tool LLM Response:", ai_msg)
 
-    for tool_call in ai_msg.tool_calls:
-        selected_tool = {"execute_aql": execute_aql, "get_info_vt_hash": get_info_vt_hash, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip_ip": get_info_tip_ip}[tool_call["name"].lower()]
-        tool_output = selected_tool.invoke(tool_call["args"])
-        state.chat_messages.append({"role": "system", "content": tool_output}) # Add Tool Responses to chat messages so that chat LLMs have the responses state
+    process_tool_calls(ai_msg.tool_calls, state, ai_msg, tool_llm)
 
     for chunk in chat_llm.stream(state.chat_messages):
         yield chunk.content
 
     state.chat_messages.append({"role": "assistant", "content": chunk.content})
 
-# for chat_message in st.session_state['chat_messages']:
-#     if type(chat_message) == HumanMessage:
-#         with st.chat_message("human"):
-#             st.markdown(chat_message.content)
-
-#     if type(chat_message) == AIMessage:
-#         with st.chat_message("assistant"):
-#             st.markdown(chat_message.content)
-
-# # Human query
-# if query := st.chat_input("What do you need?"):
-#     print(st.session_state['tool_messages'])
-
-#     print('\n\n')
-
-#     print(st.session_state['chat_messages'])
-#     with st.chat_message("user"):
-#         st.markdown(query)
-
-#     # append human query to tool messages for the tool calling
-#     st.session_state['tool_messages'].append(HumanMessage(query))
-#     # append human query to chat messages as a context to be respond
-#     st.session_state['chat_messages'].append(HumanMessage(query))
-
-#     # Start by calling tool-calling LLMs for gathering informations or doing actions
-#     ai_msg = tool_llm.invoke(st.session_state['tool_messages'])
-#     st.session_state['tool_messages'].append(ai_msg)
-    
-#     print("Tool LLM Response:", ai_msg)
-
-#     for tool_call in ai_msg.tool_calls:
-#         selected_tool = {"execute_aql": execute_aql, "get_info_vt_hash": get_info_vt_hash, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip_ip": get_info_tip_ip}[tool_call["name"].lower()]
-#         tool_output = selected_tool.invoke(tool_call["args"])
-#         st.session_state['chat_messages'].append(SystemMessage(tool_output, tool_call_id=tool_call['id'])) # Add Tool Responses to chat messages so that chat LLMs have the responses
-
-#     with st.chat_message("assistant"):
-#         message_placeholder = st.empty()
-#         full_response = ""
-
-#         for chunk in chat_llm.stream(st.session_state['chat_messages']):
-#             full_response += chunk.content
-#             message_placeholder.markdown(full_response + "▌")
-
-#         message_placeholder.markdown(full_response)
-
-#     st.session_state['chat_messages'].append(AIMessage(full_response))
-#     ### END INFERENCE
+    state.chat_messages = deduplicate_system_role(state.chat_messages)
+    state.tool_messages = deduplicate_system_role(state.tool_messages)

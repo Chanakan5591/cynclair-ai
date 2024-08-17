@@ -4,10 +4,12 @@ import requests
 # Cache 3rd party
 import functools
 
+from .BaseSource import BaseSource
+
 # access env
 import os
 
-class AbuseIPDB:
+class AbuseIPDB(BaseSource):
     def __init__(self, ip_set: list[str]):
         self.base_url = "https://api.abuseipdb.com/api/v2/check?ipAddress={}"
         self.req_headers = {
@@ -32,12 +34,13 @@ class AbuseIPDB:
         for ip in self.ip_set:
             response = self._get_info_cache(ip)['data']
             full_info.append({
-                'ipAddress': response['ipAddress'],
-                'abuseConfidenceScore': response['abuseConfidenceScore'],
-                'countryCode': response['countryCode'],
-                'isp': response['isp'],
-                'domain': response['domain'],
-                'isTor': response['isTor'],
-                'totalReports': response['totalReports']
+                response['ipAddress']: {
+                    'abuseConfidenceScore': response['abuseConfidenceScore'],
+                    'countryCode': response['countryCode'],
+                    'isp': response['isp'],
+                    'domain': response['domain'],
+                    'isTor': response['isTor'],
+                    'totalReports': response['totalReports']
+                }
             })
         return full_info
