@@ -3,7 +3,7 @@ from .intelsource import VirusTotal, AbuseIPDB
 from .feature_flags import ABUSEIPDB_SOURCE, VIRUSTOTAL_SOURCE
 
 class IPEnrich:
-    def __init__(self, ip_set: str):
+    def __init__(self, ip_set: list[str]):
         self.vt = VirusTotal(ip_set, 'ip')
         self.abuseipdb = AbuseIPDB(ip_set)
 
@@ -23,6 +23,4 @@ class IPEnrich:
     def get_all_info(self):
         full_info = [{"AbuseIPDB": self.get_abuseipdb()}, {"VirusTotal": self.get_vt()}]
 
-        print(full_info)
-        # write to file
         return full_info

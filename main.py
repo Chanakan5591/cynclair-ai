@@ -37,6 +37,7 @@ from dataclasses import field
 
 # TI Lookup
 from cyntelligence import IPEnrich
+from cyntelligence import FileAnalyze
 
 # CACHING
 from functools import cache
@@ -153,15 +154,24 @@ def execute_aql(aql: str) -> str:
     return '["10.23.1.3", "102.10.55.12", "22.104.100.2"]' # return placeholder for now
 
 @tool
-def get_info_tip_ip(ip_addresses: list[str]) -> str:
-    """Interact with Threat Intelligence Platforms for getting information related to IP addresses
+def get_info_tip(targets: list[str], type: str) -> str:
+    """Interact with Threat Intelligence Platforms for getting information related to IP addresses, file hashes, domains, urls
 
     Args:
-        ip_addresses: A list of ip addresses to be send to Threat Intelligence Platform
+        targets: A list of ip addresses, file hashes, domains, urls to be look up on Threat Intelligence Platform
+        type: The type of the target, must be one of ip, hash, domain, url
     """
-    ip_enrich = IPEnrich(ip_addresses)
-    info = ip_enrich.get_all_info()
-    
+
+    match type:
+        case 'ip':
+            ip_enrich = IPEnrich(targets)
+            info = ip_enrich.get_all_info()
+        case 'hash':
+            file_analyze = FileAnalyze(targets)
+            info = file_analyze.get_all_info()
+        case _:
+            return f"Invalid type: {type}"
+
     with tempfile.NamedTemporaryFile(mode='w', delete=True) as f:
         docs = splitter.split_json(json_data=info, convert_lists=True)
         
@@ -176,36 +186,7 @@ def get_info_tip_ip(ip_addresses: list[str]) -> str:
 
     return "<ADDED_TO_RETRIEVER>"
 
-@tool
-def get_info_vt_hash(file_hash: str) -> str:
-    """Interact with VirusTotal (aka VT) for getting information related to files via file hash
-
-    Args:
-        obj: The file hash to be send to virustotal (Supported All File Hashes type)
-    """
-    info = get_info_vt_hash_request(file_hash)
-
-    useful_keys = ['last_analysis_stats', 'meaningful_name', 'creation_date', 'last_submission_date']
-
-    final_info = {}
-
-    for key in useful_keys:
-        final_info[key] = info.get(key)
-
-    final_info['engines'] = []
-
-    for engine_name, engine_info in info.get('last_analysis_results').items():
-        final_info['engines'].append({
-            'engine_name': engine_name,
-            'method': engine_info['method'],
-            'category': engine_info['category'],
-            'result': engine_info['result'],
-        })
-
-    return "Context: {}\n\nProvide all the information to the user when possible in a nicely structured table format in markdown, only provide 5 engines in the response unless asked otherwise.".format(str(final_info))
-
-
-tools = [retrieval_tool, execute_aql, get_info_vt_hash, direct_response, convert_timestamp_to_datetime_utc7, get_info_tip_ip]
+tools = [retrieval_tool, execute_aql, direct_response, convert_timestamp_to_datetime_utc7, get_info_tip]
 
 def init():
     load_dotenv() # Load API Key from env (OpenTyphoon API Key, Not actually OpenAI)
@@ -257,10 +238,9 @@ def process_tool_calls(tool_calls, state, ai_msg, tool_llm):
     print("AI MSG:", ai_msg.content)
     
     tool_call = tool_calls[0]
-    selected_tool = {"retrieval_tool": retrieval_tool, "execute_aql": execute_aql, "get_info_vt_hash": get_info_vt_hash, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip_ip": get_info_tip_ip}[tool_call["name"].lower()]
+    selected_tool = {"retrieval_tool": retrieval_tool, "execute_aql": execute_aql, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip": get_info_tip}[tool_call["name"].lower()] 
     tool_output = selected_tool.invoke(tool_call["args"])
 
-    state.tool_messages.append({"role": "tool", "content": tool_output, "tool_call_id": tool_call['id']})
 
     print("OUT:", tool_output)
 
@@ -275,6 +255,7 @@ def process_tool_calls(tool_calls, state, ai_msg, tool_llm):
         # Recursive call to process remaining tool calls
         process_tool_calls(ai_msg.tool_calls, state, ai_msg, tool_llm)
     else:
+        state.tool_messages.append({"role": "tool", "content": tool_output, "tool_call_id": tool_call['id']})
         state.chat_messages.append({"role": "system", "content": tool_output})  # Add Tool Responses to chat messages so that chat LLMs have the responses state
         
 
