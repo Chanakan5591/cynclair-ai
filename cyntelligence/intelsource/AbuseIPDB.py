@@ -10,13 +10,13 @@ from .BaseSource import BaseSource
 import os
 
 class AbuseIPDB(BaseSource):
-    def __init__(self, ip_set: list[str]):
+    def __init__(self, targets: list[str]):
         self.base_url = "https://api.abuseipdb.com/api/v2/check?ipAddress={}"
         self.req_headers = {
             "Accept": "application/json",
             "Key": os.environ["ABUSEIPDB_API_KEY"]
         }
-        self.ip_set = list(dict.fromkeys(ip_set)) # remove duplicated elements
+        self.ip_set = list(dict.fromkeys(targets)) # remove duplicated elements
 
     @functools.cache
     def _get_info_cache(self, ip) -> any:
