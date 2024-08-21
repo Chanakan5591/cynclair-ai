@@ -1,4 +1,5 @@
 # To access the platform's API endpoint
+from typing import Any
 import requests
 
 # Cache 3rd party
@@ -19,13 +20,13 @@ class AbuseIPDB(BaseSource):
         self.ip_set = list(dict.fromkeys(targets)) # remove duplicated elements
 
     @functools.cache
-    def _get_info_cache(self, ip) -> any:
+    def _get_info_cache(self, ip) -> Any:
         response = requests.get(self.base_url.format(ip), headers=self.req_headers)
 
         if response.status_code == 200: # success
             body_response = response.json()
             return body_response
-        
+
         # if not 200
         return False
 

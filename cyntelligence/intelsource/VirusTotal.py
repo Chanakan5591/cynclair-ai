@@ -20,6 +20,7 @@ class VirusTotal(BaseSource):
 
     @functools.cache
     def _get_info_cache(self, target):
+        info = None
         if self.type == 'ip':
             info = self.vt.get_object(f'/ip_addresses/{target}')
         elif self.type == 'domain':
@@ -32,8 +33,14 @@ class VirusTotal(BaseSource):
 
     def get_info(self):
         full_info = []
-        for target in self.targets: 
+        for target in self.targets:
             info = self._get_info_cache(target)
+
+            print(info)
+
+            if not info:
+                full_info.append({target: {}})
+                continue
 
             useful_keys = ['whois', 'continent', 'meaningful_name', 'creation_date', 'last_submission_date']
             final_info = {}
@@ -47,14 +54,18 @@ class VirusTotal(BaseSource):
 
             final_info['engines'] = []
 
-            for engine_name, engine_info in info.get('last_analysis_results').items():
+            engine_names = list(info.get('last_analysis_results').keys())
+            engine_names_to_process = engine_names[:10]
+
+            for engine_name in engine_names_to_process:
+                engine_info = info.get('last_analysis_results')[engine_name]
                 final_info[f'engine_{engine_name}_method'] = engine_info['method']
                 final_info[f'engine_{engine_name}_category'] = engine_info['category']
                 final_info[f'engine_{engine_name}_result'] = engine_info['result']
-   
 
-            full_info.append({target: final_info})
-        return full_info
+                full_info.append({target: final_info})
+
+            return full_info
 
 
     def close_vt(self):

@@ -10,7 +10,7 @@ class IPEnrich:
     def get_vt(self):
         if VIRUSTOTAL_SOURCE:
             return self.vt.get_info()
-    
+
         return None
 
     def get_abuseipdb(self):
@@ -21,6 +21,7 @@ class IPEnrich:
 
     # All in this case only applied to enabled TIP
     def get_all_info(self):
-        full_info = [{"AbuseIPDB": self.get_abuseipdb()}, {"VirusTotal": self.get_vt()}]
+        full_info = [{"ip_AbuseIPDB": self.get_abuseipdb()}, {"ip_VirusTotal": self.get_vt()}]
+        print("CALLING VT")
 
         return full_info

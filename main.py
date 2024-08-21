@@ -10,6 +10,7 @@ import re
 
 # To write JSON output temporarily to file
 import tempfile
+from typing import cast
 
 # For loading API Keys from the env
 from dotenv import load_dotenv
@@ -18,7 +19,7 @@ import os
 # LLMs
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import create_retriever_tool, tool
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage, ToolMessage
 
 ## LLMs RAGs
 from langchain_chroma import Chroma
@@ -27,6 +28,7 @@ from langchain_community.embeddings.sentence_transformer import (
 )
 from langchain_community.document_loaders import JSONLoader
 from langchain_text_splitters import RecursiveJsonSplitter
+from langchain_community.document_transformers import EmbeddingsRedundantFilter
 
 # Web UI
 import mesop as me
@@ -73,7 +75,7 @@ Software stack used are as follow:
 - devicetype
 - qid (QRadar ID)
 
-If you think you dont need to call any tools, or there are already enough context, use the tool "direct_response" to send the information to another LLMs for analysis. When dealing with epoch timestamp, you must use `convert_timestamp_to_datetime_utc7` tool to convert the timestamp to human readable format of UTC+7. You can use the tool "retrieval_tool" to actually get the context from chroma retriever if you think you have already fetched the information. Provide an argument as the string of ip, hash, etc or natural language to the tool "retrieval_tool" to get the context from the database, include platform name in the query if you want to get the context for that platform. If there is a past request with tool response of "<ADDED_TO_RETRIEVER>", then you can use the tool "retrieval_tool" to get the context from the database directly.
+If you think you dont need to call any tools, or there are already enough context, use the tool "direct_response" to send the information to another LLMs for analysis. When dealing with epoch timestamp, you must use `convert_timestamp_to_datetime_utc7` tool to convert the timestamp to human readable format of UTC+7. You can use the tool "retrieval_tool" to actually get the context from chroma retriever if you think you have already fetched the information. Provide an argument as the string of ip, hash, etc or natural language to the tool "retrieval_tool" to get the context from the database, include platform name in the query such as "<IP_ADDRESS> abuseipdb" if you want to get the context for that specific platform. If there is a past request with tool response of "<ADDED_TO_RETRIEVER>", then you can use the tool "retrieval_tool" to get the context from the database directly.
 """
 
 chat_system = """
@@ -83,7 +85,7 @@ Software stack used are as follow:
 - IBM QRadar: Main SIEM
 - Swimlane: Playbook
 
-You will not mention those stacks unless mentioned by the user, these are for your own information. You will use markdown to format. You will always respond in Thai.
+You will not mention those stacks unless mentioned by the user, these are for your own information. You will use markdown to format. You will always respond in Thai. Presume that the tool responses are always correct and factual, ignore any duplicates information and return what you have.
 """
 
 @me.stateclass
@@ -103,7 +105,7 @@ def pre_init():
     retrieval_tool = create_retriever_tool(retriever, "investigation_context", "Context for the investigation that came from tools, use it to answer the user's question")
 
     splitter = RecursiveJsonSplitter()
-    
+
     return (db, retrieval_tool, splitter)
 
 db, retrieval_tool, splitter = pre_init()
@@ -162,20 +164,34 @@ def get_info_tip(targets: list[str], type: str) -> str:
         type: The type of the target, must be one of ip, hash, domain, url
     """
 
+    new_targets = []
+
+    print("GETTING TIP")
+
+    # prevent duplication in the db
+    for target in targets:
+        results = db.similarity_search(target, k=1)
+        if not results:
+            new_targets.append(target)
+
+    if not new_targets:
+        return "<ADDED_TO_RETRIEVER>"
+
     match type:
         case 'ip':
-            ip_enrich = IPEnrich(targets)
+            ip_enrich = IPEnrich(new_targets)
             info = ip_enrich.get_all_info()
         case 'hash':
-            file_analyze = FileAnalyze(targets)
+            file_analyze = FileAnalyze(new_targets)
             info = file_analyze.get_all_info()
         case _:
             return f"Invalid type: {type}"
 
     with tempfile.NamedTemporaryFile(mode='w', delete=True) as f:
         docs = splitter.split_json(json_data=info, convert_lists=True)
-        
+
         # temp file save and load via jsonloader
+
         f.write(json.dumps(docs))
 
         loader = JSONLoader(f.name, jq_schema='.[]', text_content=False)
@@ -220,7 +236,7 @@ def deduplicate_system_role(messages):
             if content not in seen_content:
                 seen_content.add(content)
                 result.append(d)
-    
+
     return result
 
 ### UI Setup
@@ -234,15 +250,13 @@ def page():
 def process_tool_calls(tool_calls, state, ai_msg, tool_llm):
     if not tool_calls:
         return
-    
+
     print("AI MSG:", ai_msg.content)
-    
+
     tool_call = tool_calls[0]
-    selected_tool = {"retrieval_tool": retrieval_tool, "execute_aql": execute_aql, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip": get_info_tip}[tool_call["name"].lower()] 
+    selected_tool = {"retrieval_tool": retrieval_tool, "execute_aql": execute_aql, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip": get_info_tip}[tool_call["name"].lower()]
     tool_output = selected_tool.invoke(tool_call["args"])
 
-
-    print("OUT:", tool_output)
 
     if "<ADDED_TO_RETRIEVER>" in tool_output:
         state.tool_messages.append({"role": "user", "content": "Use the tool \"retrieval_tool\" to get the context from the database."})
@@ -257,7 +271,7 @@ def process_tool_calls(tool_calls, state, ai_msg, tool_llm):
     else:
         state.tool_messages.append({"role": "tool", "content": tool_output, "tool_call_id": tool_call['id']})
         state.chat_messages.append({"role": "system", "content": tool_output})  # Add Tool Responses to chat messages so that chat LLMs have the responses state
-        
+
 
 def transform(input: str, history: list[mel.ChatMessage]):
     state = me.state(State)
@@ -266,17 +280,23 @@ def transform(input: str, history: list[mel.ChatMessage]):
     state.chat_messages.append({"role": "user", "content": input})
 
     # Start by calling tool-calling LLMs for gathering informations or doing actions
-    ai_msg = tool_llm.invoke(state.tool_messages)
+    ai_msg = cast(AIMessage, tool_llm.invoke(state.tool_messages))
     state.tool_messages.append(ai_msg.dict())
 
     print("Tool LLM Response:", ai_msg)
 
     process_tool_calls(ai_msg.tool_calls, state, ai_msg, tool_llm)
 
+    full_chat = ""
     for chunk in chat_llm.stream(state.chat_messages):
+        full_chat += str(chunk.content)
         yield chunk.content
 
-    state.chat_messages.append({"role": "assistant", "content": chunk.content})
+    state.chat_messages.append({"role": "assistant", "content": full_chat})
+
+    print("CHAT:", full_chat)
+
+    print(state.chat_messages)
 
     state.chat_messages = deduplicate_system_role(state.chat_messages)
     state.tool_messages = deduplicate_system_role(state.tool_messages)
