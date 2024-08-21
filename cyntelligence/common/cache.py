@@ -14,20 +14,27 @@
 # limitations under the License.
 # ----------------------------------------------------------------------
 
-from .intelsource import VirusTotal
-from .feature_flags import VIRUSTOTAL_SOURCE
+import functools
+import time
 
-class FileAnalyze:
-    def __init__(self, file_hashes: list[str]):
-        self.vt = VirusTotal(file_hashes, 'hash')
 
-    def get_vt(self):
-        if VIRUSTOTAL_SOURCE:
-            return self.vt.get_info()
+def time_cache(max_age, maxsize=128, typed=False):
+    """Least-recently-used cache decorator with time-based cache invalidation.
 
-        return None
+    Args:
+        max_age: Time to live for cached results (in seconds).
+        maxsize: Maximum cache size (see `functools.lru_cache`).
+        typed: Cache on distinct input types (see `functools.lru_cache`).
+    """
+    def _decorator(fn):
+        @functools.lru_cache(maxsize=maxsize, typed=typed)
+        def _new(*args, __time_salt, **kwargs):
+            return fn(*args, **kwargs)
 
-    def get_all_info(self):
-        full_info = [{"files_VirusTotal": self.get_vt()}]
+        @functools.wraps(fn)
+        def _wrapped(*args, **kwargs):
+            return _new(*args, **kwargs, __time_salt=int(time.time() / max_age))
 
-        return full_info
+        return _wrapped
+
+    return _decorator
