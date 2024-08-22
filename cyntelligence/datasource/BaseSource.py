@@ -1,5 +1,8 @@
 # ----------------------------------------------------------------------
-# Copyright 2024 Chanakan Moongthin <me@chanakancloud.net> on behalf of Up Up Up All Night
+# Base Data Source file for implementing data source
+#
+# Copyright 2024 Chanakan Moongthin <me@chanakancloud.net>
+# on behalf of Up Up Up All Night
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

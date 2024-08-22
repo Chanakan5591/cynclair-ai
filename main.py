@@ -1,5 +1,9 @@
 # ----------------------------------------------------------------------
-# Copyright 2024 Chanakan Moongthin <me@chanakancloud.net> on behalf of Up Up Up All Night
+# Main Automated Investigator File containing the web interface
+# and most of the logic.
+#
+# Copyright 2024 Chanakan Moongthin <me@chanakancloud.net>
+# on behalf of Up Up Up All Night
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

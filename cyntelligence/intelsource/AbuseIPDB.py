@@ -1,5 +1,9 @@
 # ----------------------------------------------------------------------
-# Copyright 2024 Chanakan Moongthin <me@chanakancloud.net> on behalf of Up Up Up All Night
+# AbuseIPDB Intelligence Source File for interacting with
+# AbuseIPDB via its API
+#
+# Copyright 2024 Chanakan Moongthin <me@chanakancloud.net>
+# on behalf of Up Up Up All Night
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

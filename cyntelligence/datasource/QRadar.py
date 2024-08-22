@@ -1,5 +1,9 @@
 # ----------------------------------------------------------------------
-# Copyright 2024 Chanakan Moongthin <me@chanakancloud.net> on behalf of Up Up Up All Night
+# QRadar Data Source file for interacting with QRadar instance
+# via its Ariel API
+#
+# Copyright 2024 Chanakan Moongthin <me@chanakancloud.net>
+# on behalf of Up Up Up All Night
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +22,7 @@ import functools
 from typing import Any
 
 import requests
-from cyntelligence.datasource import BaseSource
+from . import BaseSource
 import os
 
 class QRadar(BaseSource):
@@ -59,5 +63,4 @@ class QRadar(BaseSource):
                         return body_response
 
         # if any of the steps failed
-        return False
-
+        return [{}]

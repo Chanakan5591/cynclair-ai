@@ -1,5 +1,8 @@
 # ----------------------------------------------------------------------
-# Copyright 2024 Chanakan Moongthin <me@chanakancloud.net> on behalf of Up Up Up All Night
+# Initialization file for cyntelligence.
+#
+# Copyright 2024 Chanakan Moongthin <me@chanakancloud.net>
+# on behalf of Up Up Up All Night
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
