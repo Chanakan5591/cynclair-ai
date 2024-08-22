@@ -19,5 +19,6 @@
 
 from .IPEnrich import IPEnrich
 from .FileAnalyze import FileAnalyze
+from .MITRESearch import MITRESearch
 
-__all__ = ['IPEnrich', 'FileAnalyze']
+__all__ = ['IPEnrich', 'FileAnalyze', 'MITRESearch']

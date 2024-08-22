@@ -15,7 +15,7 @@ All API Keys are optional, and the feature can be disabled via `cyntelligence/fe
 - Python 3.10 & Pip (Only Tested specifically on this version) - needed as the main software runs on Python
 - OpenTyphoon API Key (Free) - needed for the actual LLMs interactions and tool-calling
 - AbuseIPDB API Key (Free) - needed for the file analysis via AbuseIPDB
-- VirusTotal API Key (Free) - needed for the file analysis via VirusTotal 
+- VirusTotal API Key (Free) - needed for the file analysis via VirusTotal
 - QRadar API Key - needed for the logs/events analysis via QRadar SIEM
 
 ## Why Typhoon
@@ -63,8 +63,8 @@ The criteria are based on the following factors:
   - LLMs should be able to understand the nuances of Thai language
   - LLMs should be able to understand the context of the question
   - LLMs should be able to understand the context of the environment
-  - LLMs should be able to understand the context of the external data sources
-  - LLMs should be customizable to fit the specific needs of the user
+- LLMs should be able to understand the context of the external data sources
+- LLMs should be customizable to fit the specific needs of the user
 
 These evaluation results were sourced from the Typhoon LLMs page on Hugging Face, and the results are as follows:
 
@@ -77,3 +77,15 @@ These evaluation results were sourced from the Typhoon LLMs page on Hugging Face
 | gpt-4-0612       | 17.10/38.75         | 90/100               | 56.41/76.25              |
 | ---              | ---                 | ---                  | ---                      |
 | gpt-4o           | 44.73/57.5          | 100/100              | 71.64/76.58              |
+
+And this is from the OpenTyphoon release blog comparing their large model with large proprietary model using Stanford HELM framework
+
+
+#### Language & Knowledge Capabilities
+
+| Model                      | ONET  | IC    | TGAT  | TPAT-1 | A-Level | Average (ThaiExam) | M3Exam | MMLU  |
+|----------------------------|-------|-------|-------|--------|---------|--------------------|--------|-------|
+| Typhoon-1.5 72B            | 0.562 | 0.716 | 0.778 | 0.500  | 0.528   | 0.6168             | 0.587  | 0.7271 |
+| OpenThaiGPT 1.0.0 70B      | 0.447 | 0.492 | 0.778 | 0.500  | 0.319   | 0.5072             | 0.493  | 0.6167 |
+| GPT-3.5-turbo (01-2024)     | 0.358 | 0.279 | 0.678 | 0.345  | 0.318   | 0.3956             | 0.316  | 0.700  |
+| GPT-4 (04-2024)            | 0.589 | 0.594 | 0.756 | 0.517  | 0.616   | 0.6144             | 0.626  | 0.864  |

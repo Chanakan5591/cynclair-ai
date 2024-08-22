@@ -19,5 +19,6 @@
 
 from .VirusTotal import VirusTotal
 from .AbuseIPDB import AbuseIPDB
+from .MITRE import MITRE
 
-__all__ = ["VirusTotal", "AbuseIPDB"]
+__all__ = ["VirusTotal", "AbuseIPDB", "MITRE"]

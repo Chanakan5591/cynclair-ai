@@ -30,7 +30,7 @@ import re
 
 # To write JSON output temporarily to file
 import tempfile
-from typing import cast
+from typing import Literal, cast
 
 # For loading API Keys from the env
 from dotenv import load_dotenv
@@ -58,8 +58,8 @@ import mesop.labs as mel
 from dataclasses import field
 
 # TI Lookup
-from .cyntelligence import IPEnrich
-from .cyntelligence import FileAnalyze
+from cyntelligence import IPEnrich, MITRESearch
+from cyntelligence import FileAnalyze
 
 # CACHING
 from functools import cache
@@ -176,6 +176,17 @@ def execute_aql(aql: str) -> str:
     return '["10.23.1.3", "102.10.55.12", "22.104.100.2"]' # return placeholder for now
 
 @tool
+def get_info_mitre(technique_id_list: list[str], stix_type: Literal["attack-pattern", "malware", "tool", "intrusion-set", "campaign", "course-of-action", "x-mitre-matrix", "x-mitre-tactic", "x-mitre-data-source", "x-mitre-data-component"]) -> str:
+    """Get information about a specific MITRE ATT&CK technique
+
+    Args:
+        technique_id_list: A list of MITRE ATT&CK technique IDs to get information about
+        stix_type: The STIX type to get information about, must be one of attack-pattern, malware, tool, intrusion-set, campaign, course-of-action, x-mitre-matrix, x-mitre-tactic, x-mitre-data-source, x-mitre-data-component
+    """
+    mitre = MITRESearch(technique_id_list)
+    return str(mitre.get_object_by_attack_ids(stix_type))
+
+@tool
 def get_info_tip(targets: list[str], type: str) -> str:
     """Interact with Threat Intelligence Platforms for getting information related to IP addresses, file hashes, domains, urls
 
@@ -222,7 +233,7 @@ def get_info_tip(targets: list[str], type: str) -> str:
 
     return "<ADDED_TO_RETRIEVER>"
 
-tools = [retrieval_tool, execute_aql, direct_response, convert_timestamp_to_datetime_utc7, get_info_tip]
+tools = [retrieval_tool, execute_aql, direct_response, convert_timestamp_to_datetime_utc7, get_info_tip, get_info_mitre]
 
 def init():
     load_dotenv() # Load API Key from env (OpenTyphoon API Key, Not actually OpenAI)
@@ -274,7 +285,7 @@ def process_tool_calls(tool_calls, state, ai_msg, tool_llm):
     print("AI MSG:", ai_msg.content)
 
     tool_call = tool_calls[0]
-    selected_tool = {"retrieval_tool": retrieval_tool, "execute_aql": execute_aql, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip": get_info_tip}[tool_call["name"].lower()]
+    selected_tool = {"retrieval_tool": retrieval_tool, "execute_aql": execute_aql, "direct_response": direct_response, "convert_timestamp_to_datetime_utc7": convert_timestamp_to_datetime_utc7, "get_info_tip": get_info_tip, "get_info_mitre": get_info_mitre}[tool_call["name"].lower()]
     tool_output = selected_tool.invoke(tool_call["args"])
 
 

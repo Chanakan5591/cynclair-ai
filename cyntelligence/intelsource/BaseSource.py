@@ -18,11 +18,12 @@
 # ----------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 class BaseSource(ABC):
-    def __init__(self, targets: list[str]):
+    def __init__(self, targets: list[str] = []):
         self.targets = targets
 
     @abstractmethod
-    def get_info(self) -> list[dict]:
+    def get_info(self) -> Any:
         return [{}]
