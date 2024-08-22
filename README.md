@@ -20,7 +20,7 @@ All API Keys are optional, and the feature can be disabled via `cyntelligence/fe
 
 ## Why Typhoon
 
-Typhoon LLM is a Thai-focused LLM developed by SCB 10X, which understand Thai language complexity and nuance at a deeper level than other language models due to the training and finetuning process that are focused on Thai language. It is also a general purpose LLM, which can be used for a wide range of tasks, such as chat, summarization, question answering, and more. A natural Thai language support is crucial for rapid investigation and analysis without having to think of certain jargons or complex query statement. The model still retains its ability to understand English.
+Typhoon LLM is a Thai-focused Open LLM developed by SCB 10X, which understand Thai language complexity and nuance at a deeper level than other open language models due to the training and finetuning process that are focused on Thai language. Open LLM model is crucial for sensitive working environments where you might not want any kind of data to leave your network, as you can run the model locally. It is also a general purpose LLM, which can be used for a wide range of tasks, such as chat, summarization, question answering, and more. A natural Thai language support is crucial for rapid investigation and analysis without having to think of certain jargons or complex query statement. The model still retains its ability to understand and respond in English.
 
 ## What can be improved
 
