@@ -54,8 +54,8 @@ import mesop.labs as mel
 from dataclasses import field
 
 # TI Lookup
-from cyntelligence import IPEnrich
-from cyntelligence import FileAnalyze
+from .cyntelligence import IPEnrich
+from .cyntelligence import FileAnalyze
 
 # CACHING
 from functools import cache
