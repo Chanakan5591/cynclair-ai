@@ -37,6 +37,8 @@ The model still suffers from low context window (8192 tokens), which is a limita
 
 The model might have certain abilities to generate playbook script for Swimlane (According to early internal technology selection criteria assessment we have done on the LLM itself.)
 
+As the intelligence sources are pluggable, we can add more intelligence sources in the future, such as MISP, Shodan, etc.
+
 ## How to run
 
 1. Install all the required dependencies via `pip install -r requirements.txt`
