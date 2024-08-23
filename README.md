@@ -66,7 +66,7 @@ The criteria are based on the following factors:
 - LLMs should be able to understand the context of the external data sources
 - LLMs should be customizable to fit the specific needs of the user
 
-These evaluation results were sourced from the Typhoon LLMs page on Hugging Face, and the results are as follows:
+These evaluation results were sourced from the [Typhoon LLMs page on Hugging Face](https://huggingface.co/scb10x/llama-3-typhoon-v1.5x-70b-instruct), and the results are as follows:
 
 #### Agentic Capabilities
 
@@ -78,8 +78,7 @@ These evaluation results were sourced from the Typhoon LLMs page on Hugging Face
 | ---              | ---                 | ---                  | ---                      |
 | gpt-4o           | 44.73/57.5          | 100/100              | 71.64/76.58              |
 
-And this is from the OpenTyphoon release blog comparing their large model with large proprietary model using Stanford HELM framework
-
+And this is from the [OpenTyphoon release blog](https://blog.opentyphoon.ai/typhoon-1-5-release-a9364cb8e8d7) comparing their large model with large proprietary model using Stanford HELM framework
 
 #### Language & Knowledge Capabilities
 
@@ -89,3 +88,23 @@ And this is from the OpenTyphoon release blog comparing their large model with l
 | OpenThaiGPT 1.0.0 70B      | 0.447 | 0.492 | 0.778 | 0.500  | 0.319   | 0.5072             | 0.493  | 0.6167 |
 | GPT-3.5-turbo (01-2024)     | 0.358 | 0.279 | 0.678 | 0.345  | 0.318   | 0.3956             | 0.316  | 0.700  |
 | GPT-4 (04-2024)            | 0.589 | 0.594 | 0.756 | 0.517  | 0.616   | 0.6144             | 0.626  | 0.864  |
+
+We had concluded that, based on the evaluation results, the Typhoon models (with the larger one use specifically for chat, while the other one for tool-calling) is the best models for our use case, as it has very close agentic capabilities and language & knowledge capabilities to the large proprietary model, for an open model focused on Thai language.
+
+## Acknowledgements
+
+With sincere thanks to:
+
+- [Cynclair](https://cynclair.com/), [Mahidol University International College](https://muic.mahidol.ac.th) for providing us with the opportunity to participate in the hackathon
+- [SCB 10X](https://www.scb10x.com/) for developing the Typhoon models
+- [OpenTyphoon](https://opentyphoon.ai/) for making the Typhoon models API available for public use
+- [Mesop](https://google.github.io/mesop/) for providing the UI framework
+- [Chroma](https://www.trychroma.com/) for the vector database for storing the context of the LLMs
+- [VirusTotal](https://www.virustotal.com/) for being everyone's go-to for checking the reputation of files, URLs, and IP addresses
+- [AbuseIPDB](https://www.abuseipdb.com/) for providing the IP reputation database
+- [QRadar SIEM](https://www.ibm.com/qradar) for providing a simple API access to query SIEM data
+
+We also personally thank:
+
+- **Cynclair Persona and Mentor** for providing us with the information and guidance throughout the hackathon
+- **Our Fellow Hackathon Participants** for providing us with the opportunity to learn from them
