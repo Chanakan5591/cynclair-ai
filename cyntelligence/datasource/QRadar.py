@@ -22,7 +22,7 @@ import functools
 from typing import Any
 
 import requests
-from . import BaseSource
+from .BaseSource import BaseSource
 import os
 
 class QRadar(BaseSource):
@@ -64,3 +64,6 @@ class QRadar(BaseSource):
 
         # if any of the steps failed
         return [{}]
+
+    def get_info(self):
+        return self._get_info_cache(self.query)

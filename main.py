@@ -58,7 +58,7 @@ import mesop.labs as mel
 from dataclasses import field
 
 # TI Lookup
-from cyntelligence import IPEnrich, MITRESearch
+from cyntelligence import IPEnrich, MITRESearch, QRadarSearch
 from cyntelligence import FileAnalyze
 
 # CACHING
@@ -173,7 +173,9 @@ def execute_aql(aql: str) -> str:
         aql: The Ariel Query Language statement to execute to the server and returns query result. MUST be a valid AQL statement
     """
     print(aql)
-    return '["10.23.1.3", "102.10.55.12", "22.104.100.2"]' # return placeholder for now
+
+    qradar = QRadarSearch(aql)
+    return str(qradar.search())
 
 @tool
 def get_info_mitre(technique_id_list: list[str], stix_type: Literal["attack-pattern", "malware", "tool", "intrusion-set", "campaign", "course-of-action", "x-mitre-matrix", "x-mitre-tactic", "x-mitre-data-source", "x-mitre-data-component"]) -> str:

@@ -20,5 +20,6 @@
 from .IPEnrich import IPEnrich
 from .FileAnalyze import FileAnalyze
 from .MITRESearch import MITRESearch
+from .QRadarSearch import QRadarSearch
 
-__all__ = ['IPEnrich', 'FileAnalyze', 'MITRESearch']
+__all__ = ['IPEnrich', 'FileAnalyze', 'MITRESearch', 'QRadarSearch']

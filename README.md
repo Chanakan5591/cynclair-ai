@@ -7,6 +7,7 @@
 - [What can be improved](#what-can-be-improved)
 - [How to run](#how-to-run)
 - [Technical Details](#technical-details)
+- [Acknowledgements](#acknowledgements)
 
 ## Requirements
 
