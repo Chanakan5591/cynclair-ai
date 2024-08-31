@@ -21,9 +21,10 @@
 from .intelsource import VirusTotal
 from .feature_flags import VIRUSTOTAL_SOURCE
 
+
 class FileAnalyze:
     def __init__(self, file_hashes: list[str]):
-        self.vt = VirusTotal(file_hashes, 'hash')
+        self.vt = VirusTotal(file_hashes, "hash")
 
     def get_vt(self):
         if VIRUSTOTAL_SOURCE:

@@ -19,46 +19,52 @@
 # ----------------------------------------------------------------------
 
 import functools
-from typing import Any
 
 import requests
 from .BaseSource import BaseSource
 import os
 
+
 class QRadar(BaseSource):
     def __init__(self, query):
         super().__init__(query)
-        self.base_url = f"https://{os.environ['QRADAR_HOSTNAME']}/restapi/api/ariel/searches"
+        self.base_url = (
+            f"https://{os.environ['QRADAR_HOSTNAME']}/restapi/api/ariel/searches"
+        )
         self.req_headers = {
             "Accept": "application/json",
-            "SEC": os.environ["QRADAR_SECURITY_TOKEN"]
+            "SEC": os.environ["QRADAR_SECURITY_TOKEN"],
         }
 
     @functools.cache
     def _get_info_cache(self, ip) -> list[dict]:
 
         # Schedule the query
-        schedule_response = requests.post(self.base_url, headers=self.req_headers, json={
-            "query_expression": self.query
-        })
+        schedule_response = requests.post(
+            self.base_url,
+            headers=self.req_headers,
+            json={"query_expression": self.query},
+        )
 
-        if schedule_response.status_code == 200: # success
+        if schedule_response.status_code == 200:  # success
             body_response = schedule_response.json()
-            cursor_id = body_response['cursor_id']
+            cursor_id = body_response["cursor_id"]
 
             status_url = f"{self.base_url}/{cursor_id}"
             status_response = requests.get(status_url, headers=self.req_headers)
 
             # Check query status
-            if status_response.status_code == 200: # success
+            if status_response.status_code == 200:  # success
                 body_response = status_response.json()
 
-                if body_response['status'] == 'COMPLETED':
+                if body_response["status"] == "COMPLETED":
                     results_url = f"{self.base_url}/{cursor_id}/results"
 
                     # Get results
-                    results_response = requests.get(results_url, headers=self.req_headers)
-                    if results_response.status_code == 200: # success
+                    results_response = requests.get(
+                        results_url, headers=self.req_headers
+                    )
+                    if results_response.status_code == 200:  # success
                         body_response = results_response.json()
                         return body_response
 

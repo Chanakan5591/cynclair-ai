@@ -21,9 +21,10 @@
 from .intelsource import VirusTotal, AbuseIPDB
 from .feature_flags import ABUSEIPDB_SOURCE, VIRUSTOTAL_SOURCE
 
+
 class IPEnrich:
     def __init__(self, ip_set: list[str]):
-        self.vt = VirusTotal(ip_set, 'ip')
+        self.vt = VirusTotal(ip_set, "ip")
         self.abuseipdb = AbuseIPDB(ip_set)
 
     def get_vt(self):
@@ -40,7 +41,10 @@ class IPEnrich:
 
     # All in this case only applied to enabled TIP
     def get_all_info(self):
-        full_info = [{"ip_AbuseIPDB": self.get_abuseipdb()}, {"ip_VirusTotal": self.get_vt()}]
+        full_info = [
+            {"ip_AbuseIPDB": self.get_abuseipdb()},
+            {"ip_VirusTotal": self.get_vt()},
+        ]
         print("CALLING VT")
 
         return full_info

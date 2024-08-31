@@ -1,0 +1,12 @@
+jq
+mesop
+vt-py
+langchain
+langchain_chroma
+langchain_openai
+langchain_text_splitters
+langchain_community
+requests
+sentence-transformers
+flake8
+black

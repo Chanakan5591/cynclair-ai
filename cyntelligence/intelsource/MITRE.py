@@ -22,6 +22,7 @@ from mitreattack.stix20 import MitreAttackData
 
 from .BaseSource import BaseSource
 
+
 class MITRE(BaseSource):
     def __init__(self):
         self.data = MitreAttackData("enterprise-attack.json")

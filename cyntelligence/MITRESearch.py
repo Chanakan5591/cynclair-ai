@@ -20,13 +20,28 @@
 from typing import Literal
 from .intelsource import MITRE
 
+
 class MITRESearch:
     def __init__(self, ids: list[str] = []):
         mitre = MITRE()
         self.data = mitre.get_info()
         self.ids = ids
 
-    def get_object_by_attack_ids(self, stix_type: Literal["attack-pattern", "malware", "tool", "intrusion-set", "campaign", "course-of-action", "x-mitre-matrix", "x-mitre-tactic", "x-mitre-data-source", "x-mitre-data-component"]):
+    def get_object_by_attack_ids(
+        self,
+        stix_type: Literal[
+            "attack-pattern",
+            "malware",
+            "tool",
+            "intrusion-set",
+            "campaign",
+            "course-of-action",
+            "x-mitre-matrix",
+            "x-mitre-tactic",
+            "x-mitre-data-source",
+            "x-mitre-data-component",
+        ],
+    ):
         full_info = []
         for technique_id in self.ids:
             data = self.data.get_object_by_attack_id(technique_id, stix_type)
