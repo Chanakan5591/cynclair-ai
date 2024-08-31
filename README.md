@@ -1,5 +1,7 @@
 # Automated Investigator
 
+As the competition has ended (August 31, 2024), We've decided to release the source code to the public.
+
 ## Table of Contents
 
 - [Requirements](#requirements)

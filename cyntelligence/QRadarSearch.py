@@ -18,7 +18,7 @@
 # ----------------------------------------------------------------------
 
 
-from datasource import QRadar
+from .datasource import QRadar
 
 class QRadarSearch:
     def __init__(self, query: str):
